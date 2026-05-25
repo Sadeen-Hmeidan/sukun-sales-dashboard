@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sukun Apparel — Event Sales Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --olive:    #5C6B3A;
+    --olive-lt: #F0F2EA;
+    --olive-dk: #3A4425;
+    --sand:     #C8A97E;
+    --sand-lt:  #FBF6EF;
+    --sand-dk:  #7A5C35;
+    --ink:      #1C1C1C;
+    --ink-2:    #4A4A4A;
+    --ink-3:    #8A8A8A;
+    --line:     #E8E2D9;
+    --white:    #FFFFFF;
+    --bg:       #F7F4EF;
+    --danger:   #C0392B;
+    --radius:   10px;
+    --radius-lg:16px;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+  nav {
+    background: var(--ink);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 100;
+  }
+  .nav-brand { display: flex; align-items: center; gap: 14px; }
+  .nav-logo {
+    width: 38px; height: 38px; border-radius: 8px;
+    background: var(--white); display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--ink); letter-spacing: -1px;
+  }
+  .nav-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--white); letter-spacing: -0.3px; }
+  .nav-subtitle { font-size: 11px; color: rgba(255,255,255,0.45); font-weight: 300; letter-spacing: 0.8px; text-transform: uppercase; }
+  .nav-tabs { display: flex; gap: 4px; }
+  .tab-btn {
+    background: none; border: none; cursor: pointer; padding: 8px 16px; border-radius: var(--radius);
+    font-size: 14px; font-family: 'DM Sans', sans-serif; color: rgba(255,255,255,0.6); transition: all 0.15s; font-weight: 400;
+  }
+  .tab-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+  .tab-btn.active { background: rgba(255,255,255,0.15); color: white; font-weight: 500; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 2rem; }
+  .kpi-card {
+    background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem; position: relative; overflow: hidden;
+  }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--olive); }
+  .kpi-card.sand::before { background: var(--sand); }
+  .kpi-card.dark::before { background: var(--ink); }
+  .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ink-3); font-weight: 500; margin-bottom: 8px; }
+  .kpi-value { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--ink); line-height: 1; margin-bottom: 4px; }
+  .kpi-sub { font-size: 12px; color: var(--ink-3); }
+
+  .section-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .section-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--ink); letter-spacing: -0.3px; }
+
+  .chart-card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; }
+  .chart-card h3 { font-size: 12px; font-weight: 500; color: var(--ink-3); margin-bottom: 1.25rem; text-transform: uppercase; letter-spacing: 0.6px; }
+  .chart-two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+  @media (max-width: 700px) { .chart-two-col { grid-template-columns: 1fr; } }
+
+  .table-card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.5rem; }
+  .table-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); }
+  .table-head h3 { font-family: 'DM Serif Display', serif; font-size: 17px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 10px 1.5rem; font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--ink-3); font-weight: 500; text-align: left; background: var(--bg); border-bottom: 1px solid var(--line); }
+  tbody tr { border-bottom: 1px solid var(--line); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--sand-lt); }
+  tbody td { padding: 12px 1.5rem; font-size: 14px; color: var(--ink); }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+  .badge-green { background: var(--olive-lt); color: var(--olive-dk); }
+  .badge-sand  { background: #FBF0E0; color: #7A5C35; }
+  .badge-gray  { background: #F0EDE8; color: #6B6B6B; }
+
+  .form-card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 2rem; margin-bottom: 1.5rem; }
+  .form-card h2 { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 1.5rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 500; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.5px; }
+  input, select, textarea {
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px;
+    font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--white);
+    transition: border-color 0.15s; outline: none; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--olive); box-shadow: 0 0 0 3px rgba(92,107,58,0.12); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border-radius: var(--radius); font-size: 14px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: var(--ink); color: white; }
+  .btn-primary:hover { background: var(--olive-dk); }
+  .btn-outline { background: none; border: 1px solid var(--line); color: var(--ink-2); }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-danger { background: none; border: 1px solid #E8D5D4; color: var(--danger); font-size: 12px; padding: 6px 12px; }
+  .btn-danger:hover { background: #FDF0F0; }
+  .form-actions { display: flex; gap: 12px; margin-top: 1.5rem; }
+
+  .prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-bottom: 1.5rem; }
+  .prod-card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; gap: 14px; align-items: flex-start; }
+  .prod-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--olive-lt); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .prod-name { font-weight: 500; font-size: 15px; margin-bottom: 2px; }
+  .prod-sku { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+  .prod-stock-row { display: flex; align-items: center; gap: 8px; }
+  .stock-bar-wrap { flex: 1; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .stock-bar { height: 100%; border-radius: 2px; background: var(--olive); transition: width 0.4s; }
+  .stock-bar.low { background: #E07B39; }
+  .prod-stock-num { font-size: 12px; color: var(--ink-2); font-weight: 500; min-width: 40px; text-align: right; }
+
+  .alert { padding: 12px 16px; border-radius: var(--radius); font-size: 14px; margin-top: 1rem; display: none; }
+  .alert.success { background: var(--olive-lt); color: var(--olive-dk); border: 1px solid #C2CCAA; display: block; }
+  .alert.error   { background: #FDF0F0; color: var(--danger); border: 1px solid #E8C5C4; display: block; }
+
+  .empty-state { text-align: center; padding: 3rem; color: var(--ink-3); }
+  .empty-state p { font-size: 15px; margin-top: 8px; }
+
+  .page-header { margin-bottom: 2rem; }
+  .page-header h1 { font-family: 'DM Serif Display', serif; font-size: 28px; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .page-header p { font-size: 14px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">S</div>
+    <div>
+      <div class="nav-title">Sukun Apparel</div>
+      <div class="nav-subtitle">Sales Dashboard</div>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showView('dashboard',this)">Dashboard</button>
+    <button class="tab-btn" onclick="showView('events',this)">Events</button>
+    <button class="tab-btn" onclick="showView('inventory',this)">Inventory</button>
+    <button class="tab-btn" onclick="showView('add-event',this)">+ Log Event</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div id="view-dashboard" class="view active">
+    <div class="page-header">
+      <h1>Sales Overview</h1>
+      <p>Tracking event performance and inventory across all Sukun pop-ups</p>
+    </div>
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="chart-two-col">
+      <div class="chart-card">
+        <h3>Revenue by Event</h3>
+        <div style="position:relative;height:260px;">
+          <canvas id="revenueChart" role="img" aria-label="Bar chart of revenue per event"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Units Sold by Event</h3>
+        <div style="position:relative;height:260px;">
+          <canvas id="unitsChart" role="img" aria-label="Doughnut chart of units sold per event"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-head"><h3>Recent Events</h3></div>
+      <table>
+        <thead><tr><th>Event</th><th>Date</th><th>Location</th><th>Units Sold</th><th>Revenue</th><th>Status</th></tr></thead>
+        <tbody id="dashboard-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EVENTS -->
+  <div id="view-events" class="view">
+    <div class="page-header">
+      <h1>All Events</h1>
+      <p>Complete record of every pop-up and event appearance</p>
+    </div>
+    <div class="table-card">
+      <div class="table-head">
+        <h3>Event Log</h3>
+        <button class="btn btn-outline" onclick="showView('add-event', document.querySelectorAll('.tab-btn')[3])">+ Add Event</button>
+      </div>
+      <table>
+        <thead><tr><th>Event</th><th>Date</th><th>Location</th><th>Attendees</th><th>Units Sold</th><th>Revenue</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="events-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- INVENTORY -->
+  <div id="view-inventory" class="view">
+    <div class="page-header">
+      <h1>Inventory</h1>
+      <p>Current stock levels across all Sukun product lines</p>
+    </div>
+    <div class="form-card">
+      <h2>Add / Update Product</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="prod-name">Product Name</label>
+          <input type="text" id="prod-name" placeholder="e.g. Sumud Hoodie (Earthy)" />
+        </div>
+        <div class="form-group">
+          <label for="prod-sku">SKU</label>
+          <input type="text" id="prod-sku" placeholder="e.g. SKN-001" />
+        </div>
+        <div class="form-group">
+          <label for="prod-category">Category</label>
+          <select id="prod-category">
+            <option value="Hoodies">Hoodies</option>
+            <option value="Sweatshirts">Sweatshirts</option>
+            <option value="T-Shirts">T-Shirts</option>
+            <option value="Accessories">Accessories</option>
+            <option value="Tote Bags">Tote Bags</option>
+            <option value="Stickers & Pins">Stickers & Pins</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="prod-stock">Stock Quantity</label>
+          <input type="number" id="prod-stock" min="0" placeholder="50" />
+        </div>
+        <div class="form-group">
+          <label for="prod-price">Unit Price ($)</label>
+          <input type="number" id="prod-price" min="0" step="0.01" placeholder="59.99" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addProduct()">Save Product</button>
+      </div>
+      <div id="inv-alert" class="alert"></div>
+    </div>
+    <div class="section-row"><span class="section-title">Current Stock</span></div>
+    <div class="prod-grid" id="prod-grid"></div>
+  </div>
+
+  <!-- ADD EVENT -->
+  <div id="view-add-event" class="view">
+    <div class="page-header">
+      <h1>Log New Event</h1>
+      <p>Record a pop-up, market, or convention appearance</p>
+    </div>
+    <div class="form-card">
+      <h2>Event Details</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="ev-name">Event Name</label>
+          <input type="text" id="ev-name" placeholder="e.g. MAS ICNA Convention" />
+        </div>
+        <div class="form-group">
+          <label for="ev-date">Date</label>
+          <input type="date" id="ev-date" />
+        </div>
+        <div class="form-group">
+          <label for="ev-city">City</label>
+          <input type="text" id="ev-city" placeholder="e.g. Chicago, IL" />
+        </div>
+        <div class="form-group">
+          <label for="ev-venue">Venue</label>
+          <input type="text" id="ev-venue" placeholder="e.g. Donald E. Stephens Convention Center" />
+        </div>
+        <div class="form-group">
+          <label for="ev-attendees">Est. Event Attendees</label>
+          <input type="number" id="ev-attendees" min="0" placeholder="2000" />
+        </div>
+        <div class="form-group">
+          <label for="ev-units">Units Sold</label>
+          <input type="number" id="ev-units" min="0" placeholder="500" />
+        </div>
+        <div class="form-group">
+          <label for="ev-revenue">Total Revenue ($)</label>
+          <input type="number" id="ev-revenue" min="0" step="0.01" placeholder="3200" />
+        </div>
+        <div class="form-group">
+          <label for="ev-status">Status</label>
+          <select id="ev-status">
+            <option value="Sold Out">Sold Out</option>
+            <option value="Completed">Completed</option>
+            <option value="Upcoming">Upcoming</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label for="ev-notes">Notes</label>
+          <textarea id="ev-notes" placeholder="Highlights, bestselling items, logistics..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveEvent()">Save Event</button>
+        <button class="btn btn-outline" onclick="clearEventForm()">Clear</button>
+      </div>
+      <div id="ev-alert" class="alert"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── DATA LAYER (localStorage) ─────────────────────────────────────────────────
+const DB = {
+  get: k => JSON.parse(localStorage.getItem('sukun_' + k) || 'null'),
+  set: (k, v) => localStorage.setItem('sukun_' + k, JSON.stringify(v)),
+};
+function getEvents()   { return DB.get('events')   || seedEvents(); }
+function getProducts() { return DB.get('products') || seedProducts(); }
+function saveEvents(e)   { DB.set('events', e); }
+function saveProducts(p) { DB.set('products', p); }
+
+function seedEvents() {
+  const events = [
+    { id:1, name:'MAS ICNA Convention', date:'2024-01-13', city:'Chicago, IL',
+      venue:'Donald E. Stephens Convention Center', attendees:2000, units:500,
+      revenue:3200, status:'Sold Out',
+      notes:'Sold out all inventory. Sumud Hoodies and Echoes of Palestine zip-ups were top sellers.' },
+    { id:2, name:'Chicago Muslim Market', date:'2024-03-22', city:'Chicago, IL',
+      venue:'Al Salam Mosque Community Hall', attendees:350, units:87,
+      revenue:1640, status:'Completed',
+      notes:'Strong demand for accessories — keffiyehs and stickers moved quickly.' },
+    { id:3, name:'Midwest Modest Fashion Pop-Up', date:'2024-05-11', city:'Dearborn, MI',
+      venue:'Arab American National Museum', attendees:600, units:142,
+      revenue:2100, status:'Completed',
+      notes:'Collaborated with two other small brands. Great foot traffic and social media engagement.' },
+    { id:4, name:'MAS ICNA Convention', date:'2025-01-11', city:'Chicago, IL',
+      venue:'Donald E. Stephens Convention Center', attendees:2000, units:520,
+      revenue:3450, status:'Sold Out',
+      notes:'Second consecutive sell-out. Expanded product range with new colorways.' },
+    { id:5, name:'Summer Sisters Market', date:'2025-06-28', city:'Chicago, IL',
+      venue:'Millennium Park Pavilion', attendees:800, units:195,
+      revenue:2850, status:'Completed',
+      notes:'Social media traffic spiked post-event. Vol.1948 and Falastin Times were fan favorites.' },
+  ];
+  saveEvents(events);
+  return events;
+}
+
+function seedProducts() {
+  const products = [
+    { id:1,  name:'Sumud Hoodie (Moonstone Grey)', sku:'SKN-001', category:'Hoodies',      stock:24, price:59.99 },
+    { id:2,  name:'Sumud Hoodie (Earthy)',          sku:'SKN-002', category:'Hoodies',      stock:18, price:59.99 },
+    { id:3,  name:'Echoes of Palestine (Black Zip)',sku:'SKN-003', category:'Hoodies',      stock:31, price:59.99 },
+    { id:4,  name:'Echoes of Palestine (Brown Zip)',sku:'SKN-004', category:'Hoodies',      stock:14, price:59.99 },
+    { id:5,  name:'Echoes of Palestine (Dusty Blue)',sku:'SKN-005',category:'Hoodies',      stock:9,  price:54.99 },
+    { id:6,  name:'Echoes of Palestine (Olive Green)',sku:'SKN-006',category:'Hoodies',     stock:11, price:54.99 },
+    { id:7,  name:'Palestine Hoodie',               sku:'SKN-007', category:'Hoodies',      stock:20, price:15.00 },
+    { id:8,  name:'Hoodies for Gaza',               sku:'SKN-008', category:'Hoodies',      stock:7,  price:20.00 },
+    { id:9,  name:'Teddy Bear Wearing A Kuffiyeh',  sku:'SKN-009', category:'Hoodies',      stock:15, price:20.00 },
+    { id:10, name:'Falastin Times Sweatshirt',       sku:'SKN-010', category:'Sweatshirts',  stock:22, price:39.99 },
+    { id:11, name:'Heart of Palestine Sweatshirt',   sku:'SKN-011', category:'Sweatshirts',  stock:13, price:25.00 },
+    { id:12, name:'Vol.1948 Sweatshirt',             sku:'SKN-012', category:'Sweatshirts',  stock:17, price:25.00 },
+    { id:13, name:'Tatreeze Printed Hoodie',         sku:'SKN-013', category:'Hoodies',      stock:10, price:20.00 },
+    { id:14, name:'Slice of Freedom (Long Sleeve)',  sku:'SKN-014', category:'Sweatshirts',  stock:19, price:20.00 },
+    { id:15, name:'Slice of Freedom (Short Sleeve)', sku:'SKN-015', category:'T-Shirts',     stock:25, price:15.00 },
+    { id:16, name:'Barcode Hoodie',                  sku:'SKN-016', category:'Hoodies',      stock:8,  price:15.00 },
+    { id:17, name:'Palestinian Kuffiyeh',            sku:'SKN-017', category:'Accessories',  stock:40, price:10.00 },
+    { id:18, name:'Palistinian Kuffiyeh Map',        sku:'SKN-018', category:'Accessories',  stock:6,  price:20.00 },
+    { id:19, name:'Taste of the Middle East Tote',   sku:'SKN-019', category:'Tote Bags',    stock:35, price:5.00  },
+    { id:20, name:'Key Chains',                      sku:'SKN-020', category:'Accessories',  stock:60, price:3.00  },
+    { id:21, name:'Kuffiyeh Bear Sticker',           sku:'SKN-021', category:'Stickers & Pins', stock:3,  price:2.00 },
+    { id:22, name:'Map of Palestine Pin',            sku:'SKN-022', category:'Stickers & Pins', stock:45, price:7.00 },
+  ];
+  saveProducts(products);
+  return products;
+}
+
+// ── ROUTING ───────────────────────────────────────────────────────────────────
+function showView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAll();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+let revChart = null, unitChart = null;
+
+function renderAll() {
+  renderKPI();
+  renderDashboardTable();
+  renderEventsTable();
+  renderCharts();
+  renderProducts();
+}
+
+function renderKPI() {
+  const events = getEvents();
+  const totalRev   = events.reduce((s, e) => s + e.revenue, 0);
+  const totalUnits = events.reduce((s, e) => s + e.units, 0);
+  const soldOut    = events.filter(e => e.status === 'Sold Out').length;
+  const avgRev     = events.length ? totalRev / events.length : 0;
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-value">$${totalRev.toLocaleString()}</div>
+      <div class="kpi-sub">across ${events.length} events</div>
+    </div>
+    <div class="kpi-card sand">
+      <div class="kpi-label">Total Units Sold</div>
+      <div class="kpi-value">${totalUnits.toLocaleString()}</div>
+      <div class="kpi-sub">garments & accessories</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Sell-Out Events</div>
+      <div class="kpi-value">${soldOut}</div>
+      <div class="kpi-sub">${Math.round(soldOut / events.length * 100)}% of all events</div>
+    </div>
+    <div class="kpi-card dark">
+      <div class="kpi-label">Avg Revenue / Event</div>
+      <div class="kpi-value">$${Math.round(avgRev).toLocaleString()}</div>
+      <div class="kpi-sub">per pop-up appearance</div>
+    </div>`;
+}
+
+function statusBadge(s) {
+  const map = { 'Sold Out':'badge-green', 'Completed':'badge-sand', 'Upcoming':'badge-gray' };
+  return `<span class="badge ${map[s]||'badge-gray'}">${s}</span>`;
+}
+
+function renderDashboardTable() {
+  const events = getEvents().slice().reverse().slice(0, 5);
+  document.getElementById('dashboard-table-body').innerHTML = events.length
+    ? events.map(e => `<tr>
+        <td style="font-weight:500">${e.name}</td>
+        <td>${fmtDate(e.date)}</td><td>${e.city}</td>
+        <td>${e.units.toLocaleString()}</td>
+        <td>$${e.revenue.toLocaleString()}</td>
+        <td>${statusBadge(e.status)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="6"><div class="empty-state"><p>No events yet.</p></div></td></tr>`;
+}
+
+function renderEventsTable() {
+  const events = getEvents().slice().reverse();
+  document.getElementById('events-table-body').innerHTML = events.length
+    ? events.map(e => `<tr>
+        <td style="font-weight:500">${e.name}</td>
+        <td>${fmtDate(e.date)}</td><td>${e.city}</td>
+        <td>${e.attendees ? e.attendees.toLocaleString() : '—'}</td>
+        <td>${e.units.toLocaleString()}</td>
+        <td>$${e.revenue.toLocaleString()}</td>
+        <td style="max-width:160px;font-size:13px;color:var(--ink-3)">${e.notes ? e.notes.substring(0,60)+(e.notes.length>60?'…':'') : '—'}</td>
+        <td><button class="btn btn-danger" onclick="deleteEvent(${e.id})">Delete</button></td>
+      </tr>`).join('')
+    : `<tr><td colspan="8"><div class="empty-state"><p>No events logged yet.</p></div></td></tr>`;
+}
+
+function renderCharts() {
+  const events = getEvents();
+  if (!events.length) return;
+  const labels   = events.map(e => e.name.length > 16 ? e.name.substring(0,16)+'…' : e.name);
+  const revenues = events.map(e => e.revenue);
+  const units    = events.map(e => e.units);
+  const COLORS   = ['#5C6B3A','#3A4425','#C8A97E','#8A6545','#A0AE7A'];
+
+  if (revChart) revChart.destroy();
+  revChart = new Chart(document.getElementById('revenueChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label:'Revenue ($)', data: revenues,
+      backgroundColor: events.map((_,i) => COLORS[i % COLORS.length]),
+      borderRadius: 6, borderSkipped: false }] },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{ display:false } },
+      scales: {
+        y: { ticks:{ callback: v=>'$'+v.toLocaleString(), font:{size:11} }, grid:{color:'#E8E2D9'} },
+        x: { ticks:{ font:{size:11} }, grid:{display:false} }
+      }
+    }
+  });
+
+  if (unitChart) unitChart.destroy();
+  unitChart = new Chart(document.getElementById('unitsChart'), {
+    type: 'doughnut',
+    data: { labels, datasets:[{ data: units, backgroundColor: COLORS,
+      hoverOffset:6, borderWidth:2, borderColor:'#FFFFFF' }] },
+    options: { responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, padding:12, boxWidth:12 } } }
+    }
+  });
+}
+
+function renderProducts() {
+  const products = getProducts();
+  const maxStock = Math.max(...products.map(p => p.stock), 1);
+  const icons = { Hoodies:'🧥', Sweatshirts:'👕', 'T-Shirts':'👔', Accessories:'🧣', 'Tote Bags':'👜', 'Stickers & Pins':'📌' };
+  document.getElementById('prod-grid').innerHTML = products.length
+    ? products.map(p => {
+        const pct = Math.round((p.stock / maxStock) * 100);
+        const low = p.stock < 10;
+        return `<div class="prod-card">
+          <div class="prod-icon">${icons[p.category]||'📦'}</div>
+          <div style="flex:1">
+            <div class="prod-name">${p.name}</div>
+            <div class="prod-sku">${p.sku} · ${p.category}</div>
+            <div style="font-size:13px;color:var(--sand-dk);font-weight:500;margin-bottom:8px">$${parseFloat(p.price).toFixed(2)}</div>
+            <div class="prod-stock-row">
+              <div class="stock-bar-wrap"><div class="stock-bar ${low?'low':''}" style="width:${pct}%"></div></div>
+              <div class="prod-stock-num">${p.stock}${low?' ⚠':''}</div>
+            </div>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:4px">${low?'Low stock':'In stock'}</div>
+          </div>
+        </div>`;
+      }).join('')
+    : `<div class="empty-state"><p>No products added yet.</p></div>`;
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function saveEvent() {
+  const name      = document.getElementById('ev-name').value.trim();
+  const date      = document.getElementById('ev-date').value;
+  const city      = document.getElementById('ev-city').value.trim();
+  const venue     = document.getElementById('ev-venue').value.trim();
+  const attendees = parseInt(document.getElementById('ev-attendees').value) || 0;
+  const units     = parseInt(document.getElementById('ev-units').value) || 0;
+  const revenue   = parseFloat(document.getElementById('ev-revenue').value) || 0;
+  const status    = document.getElementById('ev-status').value;
+  const notes     = document.getElementById('ev-notes').value.trim();
+  const al        = document.getElementById('ev-alert');
+  al.className = 'alert';
+  if (!name || !date || !city) { al.textContent = 'Please fill in Event Name, Date, and City.'; al.className='alert error'; return; }
+  const events = getEvents();
+  events.push({ id: Date.now(), name, date, city, venue, attendees, units, revenue, status, notes });
+  saveEvents(events);
+  al.textContent = `"${name}" saved!`; al.className='alert success';
+  clearEventForm();
+  setTimeout(() => { al.className='alert'; }, 3000);
+}
+
+function clearEventForm() {
+  ['ev-name','ev-date','ev-city','ev-venue','ev-attendees','ev-units','ev-revenue','ev-notes']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ev-status').value = 'Sold Out';
+}
+
+function deleteEvent(id) {
+  if (!confirm('Delete this event?')) return;
+  saveEvents(getEvents().filter(e => e.id !== id));
+  renderAll();
+}
+
+function addProduct() {
+  const name     = document.getElementById('prod-name').value.trim();
+  const sku      = document.getElementById('prod-sku').value.trim();
+  const category = document.getElementById('prod-category').value;
+  const stock    = parseInt(document.getElementById('prod-stock').value) || 0;
+  const price    = parseFloat(document.getElementById('prod-price').value) || 0;
+  const al       = document.getElementById('inv-alert');
+  al.className = 'alert';
+  if (!name || !sku) { al.textContent = 'Product name and SKU are required.'; al.className='alert error'; return; }
+  const products = getProducts();
+  products.push({ id: Date.now(), name, sku, category, stock, price });
+  saveProducts(products);
+  ['prod-name','prod-sku','prod-stock','prod-price'].forEach(id => document.getElementById(id).value='');
+  al.textContent = `"${name}" added.`; al.className='alert success';
+  setTimeout(() => { al.className='alert'; }, 3000);
+  renderProducts();
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+renderAll();
+</script>
+</body>
+</html>
